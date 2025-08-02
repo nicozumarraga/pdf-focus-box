@@ -52,6 +52,12 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				annotation: {
+					DEFAULT: 'hsl(var(--annotation))',
+					foreground: 'hsl(var(--annotation-foreground))'
+				},
+				'sidebar-bg': 'hsl(var(--sidebar-bg))',
+				'viewer-bg': 'hsl(var(--viewer-bg))',
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',
