@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
 
 // Set up the worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 
 interface BoundingBox {
   id: string;
@@ -14,15 +16,22 @@ interface PDFViewerProps {
   file: File | null;
   boundingBoxes: BoundingBox[];
   activeBoundingBox: string | null;
+  onAddBoundingBox?: (bbox: BoundingBox) => void;
 }
 
-export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox }: PDFViewerProps) => {
+export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundingBox }: PDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
   const [pageWidth, setPageWidth] = useState<number>(0);
   const [pageHeight, setPageHeight] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  
+  // Drawing state
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [currentBox, setCurrentBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -43,6 +52,56 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox }: PDFViewerP
       setScale(optimalScale);
     }
   }
+
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!pageRef.current || !onAddBoundingBox) return;
+    
+    const rect = pageRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / scale;
+    const y = (e.clientY - rect.top) / scale;
+    
+    setIsDrawing(true);
+    setStartPoint({ x, y });
+    setCurrentBox({ x, y, width: 0, height: 0 });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !startPoint || !pageRef.current) return;
+    
+    const rect = pageRef.current.getBoundingClientRect();
+    const currentX = (e.clientX - rect.left) / scale;
+    const currentY = (e.clientY - rect.top) / scale;
+    
+    const x = Math.min(startPoint.x, currentX);
+    const y = Math.min(startPoint.y, currentY);
+    const width = Math.abs(currentX - startPoint.x);
+    const height = Math.abs(currentY - startPoint.y);
+    
+    setCurrentBox({ x, y, width, height });
+  };
+
+  const handleMouseUp = () => {
+    if (!isDrawing || !currentBox || !onAddBoundingBox) return;
+    
+    // Only add if the box has meaningful size
+    if (currentBox.width > 5 && currentBox.height > 5) {
+      const newBox: BoundingBox = {
+        id: `box-${Date.now()}`,
+        coords: [
+          Math.round(currentBox.x * 10) / 10,
+          Math.round(currentBox.y * 10) / 10,
+          Math.round((currentBox.x + currentBox.width) * 10) / 10,
+          Math.round((currentBox.y + currentBox.height) * 10) / 10
+        ],
+        label: `Box ${boundingBoxes.length + 1}`
+      };
+      onAddBoundingBox(newBox);
+    }
+    
+    setIsDrawing(false);
+    setStartPoint(null);
+    setCurrentBox(null);
+  };
 
   const renderBoundingBoxes = () => {
     if (!pageWidth || !pageHeight) return null;
@@ -91,7 +150,15 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox }: PDFViewerP
 
   return (
     <div ref={containerRef} className="flex-1 bg-viewer-bg rounded-lg p-4 overflow-auto">
-      <div className="relative inline-block">
+      <div 
+        ref={pageRef}
+        className="relative inline-block"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: onAddBoundingBox ? 'crosshair' : 'default' }}
+      >
         <Document
           file={file}
           onLoadSuccess={onDocumentLoadSuccess}
@@ -118,11 +185,26 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox }: PDFViewerP
           />
         </Document>
         {renderBoundingBoxes()}
+        {/* Drawing preview */}
+        {currentBox && isDrawing && (
+          <div
+            className="absolute border-2 border-dashed border-blue-500 bg-blue-500/10 pointer-events-none"
+            style={{
+              left: currentBox.x * scale,
+              top: currentBox.y * scale,
+              width: currentBox.width * scale,
+              height: currentBox.height * scale,
+            }}
+          />
+        )}
       </div>
       
       {numPages > 0 && (
         <div className="mt-4 text-center text-muted-foreground">
-          Page {pageNumber} of {numPages} • Scale: {Math.round(scale * 100)}%
+          <div>Page {pageNumber} of {numPages} • Scale: {Math.round(scale * 100)}%</div>
+          {onAddBoundingBox && (
+            <div className="text-sm mt-1">Click and drag to draw a bounding box</div>
+          )}
         </div>
       )}
     </div>

@@ -53,6 +53,7 @@ const Index = () => {
               file={file}
               boundingBoxes={boundingBoxes}
               activeBoundingBox={activeBoundingBox}
+              onAddBoundingBox={handleAddBoundingBox}
             />
           </div>
         </div>
