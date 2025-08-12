@@ -77,6 +77,24 @@ export const PDFViewer = ({
   const [draggingAnnotation, setDraggingAnnotation] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Helper function to save active text annotation
+  const saveActiveTextAnnotation = () => {
+    if (!activeTextAnnotation || !activeTextAnnotation.text.trim() || !onAddTextAnnotation) {
+      return false;
+    }
+    
+    const newAnnotation: TextAnnotation = {
+      id: `text-${Date.now()}`,
+      x: activeTextAnnotation.x,
+      y: activeTextAnnotation.y,
+      text: activeTextAnnotation.text,
+      fontSize: textSize,
+      page: activeTextAnnotation.page
+    };
+    onAddTextAnnotation(newAnnotation);
+    return true;
+  };
+
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
   }
@@ -140,10 +158,12 @@ export const PDFViewer = ({
         return;
       }
       
-      // Priority 3: Create new text annotation at click position
-      if (onAddTextAnnotation) {
-        setActiveTextAnnotation({ x, y, text: '', page: pageNumber });
+      // Priority 3: Handle text annotation creation/saving
+      if (activeTextAnnotation) {
+        saveActiveTextAnnotation();
       }
+      // Create new annotation at click position
+      setActiveTextAnnotation({ x, y, text: '', page: pageNumber });
     } else if (mode === 'box' && onAddBoundingBox) {
       // In draw mode, start drawing bounding box
       setIsDrawing(true);
@@ -206,18 +226,7 @@ export const PDFViewer = ({
     if (!activeTextAnnotation || !onAddTextAnnotation) return;
     
     if (e.key === 'Enter') {
-      // Submit the annotation
-      if (activeTextAnnotation.text.trim()) {
-        const newAnnotation: TextAnnotation = {
-          id: `text-${Date.now()}`,
-          x: activeTextAnnotation.x,
-          y: activeTextAnnotation.y,
-          text: activeTextAnnotation.text,
-          fontSize: textSize,
-          page: activeTextAnnotation.page
-        };
-        onAddTextAnnotation(newAnnotation);
-      }
+      saveActiveTextAnnotation();
       setActiveTextAnnotation(null);
     } else if (e.key === 'Escape') {
       // Cancel
@@ -244,6 +253,31 @@ export const PDFViewer = ({
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
   }, [activeTextAnnotation]);
+
+  // Add document-level click handler to save text annotation when clicking outside PDF pages
+  useEffect(() => {
+    if (!activeTextAnnotation || !onAddTextAnnotation) return;
+    
+    const handleDocumentClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Check if clicking outside any PDF page
+      if (!target.closest('[data-page]')) {
+        saveActiveTextAnnotation();
+        setActiveTextAnnotation(null);
+      }
+    };
+    
+    // Add click listener with a small delay to avoid conflict with the initial click
+    const timer = setTimeout(() => {
+      document.addEventListener('click', handleDocumentClick);
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('click', handleDocumentClick);
+    };
+  }, [activeTextAnnotation, onAddTextAnnotation, textSize]);
 
   // Add document-level mouse tracking for smoother dragging
   useEffect(() => {
