@@ -1,14 +1,18 @@
 # PDF Focus Box
 
-A simple PDF annotation tool with bounding box functionality. I needed this for work and couldn't find one, so I vibe coded it.
+A simple PDF annotation and form filling tool. Draw boxes, extract text, add annotations, and fill PDF forms.
 
 ## Features
 
-- Upload PDF files
-- View PDFs with automatic zoom
-- Draw bounding boxes by clicking and dragging
-- Manage bounding boxes in the sidebar
-- Coordinates automatically rounded to one decimal place
+- Upload and view PDF files
+- Draw bounding boxes to mark regions
+- Extract text from selected areas
+- Add text annotations to PDFs
+- Fill form fields programmatically
+- Edit box coordinates in the sidebar
+- Rename and organize annotations
+- Toggle visibility of boxes
+- Export all annotations as JSON
 
 ## Getting Started
 
@@ -25,8 +29,11 @@ Open `http://localhost:8080` in your browser.
 ## Usage
 
 1. Upload a PDF file
-2. Click and drag to draw bounding boxes
-3. Manage boxes in the sidebar
+2. Click and drag to draw bounding boxes around areas of interest
+3. Extract text from marked regions
+4. Add text annotations directly on the PDF
+5. Fill form fields with data
+6. Export all annotations and data as JSON
 
 ## Tech Stack
 
