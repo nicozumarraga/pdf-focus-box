@@ -38,6 +38,7 @@ interface PDFViewerProps {
   formFields?: FormFieldData[];
   formValues?: Record<string, any>;
   onFormValueChange?: (fieldName: string, value: any) => void;
+  textSize?: number;
 }
 
 export const PDFViewer = ({ 
@@ -53,7 +54,8 @@ export const PDFViewer = ({
   onPageChange,
   formFields = [],
   formValues = {},
-  onFormValueChange
+  onFormValueChange,
+  textSize = 14
 }: PDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.0);
@@ -211,7 +213,7 @@ export const PDFViewer = ({
           x: activeTextAnnotation.x,
           y: activeTextAnnotation.y,
           text: activeTextAnnotation.text,
-          fontSize: 14,
+          fontSize: textSize,
           page: activeTextAnnotation.page
         };
         onAddTextAnnotation(newAnnotation);
@@ -458,7 +460,7 @@ export const PDFViewer = ({
                   style={{
                     left: activeTextAnnotation.x * scale,
                     top: activeTextAnnotation.y * scale,
-                    fontSize: `${14 * scale}px`,
+                    fontSize: `${textSize * scale}px`,
                     fontFamily: 'Arial, sans-serif',
                     color: '#000000',
                     whiteSpace: 'nowrap'
