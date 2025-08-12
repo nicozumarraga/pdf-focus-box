@@ -45,12 +45,11 @@ export const PDFViewer = ({
   onPageChange
 }: PDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber, setPageNumber] = useState<number>(currentPage || 1);
   const [scale, setScale] = useState<number>(1.0);
   const [pageWidth, setPageWidth] = useState<number>(0);
   const [pageHeight, setPageHeight] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
-  const pageRef = useRef<HTMLDivElement>(null);
+  const pagesRef = useRef<Map<number, HTMLDivElement>>(new Map());
   
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -58,7 +57,7 @@ export const PDFViewer = ({
   const [currentBox, setCurrentBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   
   // Text annotation state
-  const [activeTextAnnotation, setActiveTextAnnotation] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [activeTextAnnotation, setActiveTextAnnotation] = useState<{ x: number; y: number; text: string; page: number } | null>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -80,16 +79,17 @@ export const PDFViewer = ({
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!pageRef.current) return;
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>, pageNumber: number) => {
+    const pageElement = e.currentTarget;
+    if (!pageElement) return;
     
-    const rect = pageRef.current.getBoundingClientRect();
+    const rect = pageElement.getBoundingClientRect();
     const x = (e.clientX - rect.left) / scale;
     const y = (e.clientY - rect.top) / scale;
     
     if (isTextMode && onAddTextAnnotation) {
       // In text mode, create active text annotation at click position
-      setActiveTextAnnotation({ x, y, text: '' });
+      setActiveTextAnnotation({ x, y, text: '', page: pageNumber });
       // Focus will be set via useEffect
     } else if (onAddBoundingBox) {
       // In bounding box mode, start drawing
@@ -100,9 +100,12 @@ export const PDFViewer = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isDrawing || !startPoint || !pageRef.current) return;
+    if (!isDrawing || !startPoint) return;
     
-    const rect = pageRef.current.getBoundingClientRect();
+    const pageElement = e.currentTarget;
+    if (!pageElement) return;
+    
+    const rect = pageElement.getBoundingClientRect();
     const currentX = (e.clientX - rect.left) / scale;
     const currentY = (e.clientY - rect.top) / scale;
     
@@ -149,7 +152,7 @@ export const PDFViewer = ({
           y: activeTextAnnotation.y,
           text: activeTextAnnotation.text,
           fontSize: 14,
-          page: pageNumber
+          page: activeTextAnnotation.page
         };
         onAddTextAnnotation(newAnnotation);
       }
@@ -214,7 +217,7 @@ export const PDFViewer = ({
     });
   };
 
-  const renderTextAnnotations = () => {
+  const renderTextAnnotations = (pageNumber: number) => {
     if (!pageWidth || !pageHeight) return null;
     
     return textAnnotations
@@ -250,78 +253,91 @@ export const PDFViewer = ({
 
   return (
     <div ref={containerRef} className="flex-1 bg-viewer-bg rounded-lg p-4 overflow-auto">
-      <div 
-        ref={pageRef}
-        className="relative inline-block"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        style={{ cursor: isTextMode ? 'text' : (onAddBoundingBox ? 'crosshair' : 'default') }}
-      >
-        <Document
-          file={file}
-          onLoadSuccess={onDocumentLoadSuccess}
-          loading={
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-          }
-          error={
-            <div className="text-center text-destructive p-8">
-              <p>Failed to load PDF. Please try again.</p>
-            </div>
-          }
-        >
-          <Page
-            pageNumber={pageNumber}
-            scale={scale}
-            onLoadSuccess={onPageLoadSuccess}
-            loading={
-              <div className="flex items-center justify-center p-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-              </div>
-            }
-          />
-        </Document>
-        {renderBoundingBoxes()}
-        {renderTextAnnotations()}
-        
-        {/* Active text annotation being typed */}
-        {activeTextAnnotation && (
-          <div
-            className="absolute pointer-events-none"
-            style={{
-              left: activeTextAnnotation.x * scale,
-              top: activeTextAnnotation.y * scale,
-              fontSize: `${14 * scale}px`,
-              fontFamily: 'Arial, sans-serif',
-              color: '#000000',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            {activeTextAnnotation.text}
-            <span className="animate-pulse">|</span>
+      <Document
+        file={file}
+        onLoadSuccess={onDocumentLoadSuccess}
+        loading={
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
-        )}
-        
-        {/* Drawing preview */}
-        {currentBox && isDrawing && (
-          <div
-            className="absolute border-2 border-dashed border-blue-500 bg-blue-500/10 pointer-events-none"
-            style={{
-              left: currentBox.x * scale,
-              top: currentBox.y * scale,
-              width: currentBox.width * scale,
-              height: currentBox.height * scale,
-            }}
-          />
-        )}
-      </div>
+        }
+        error={
+          <div className="text-center text-destructive p-8">
+            <p>Failed to load PDF. Please try again.</p>
+          </div>
+        }
+      >
+        {Array.from(new Array(numPages), (el, index) => {
+          const pageNumber = index + 1;
+          return (
+            <div
+              key={`page_${pageNumber}`}
+              className="relative inline-block mb-4"
+              ref={(el) => {
+                if (el) pagesRef.current.set(pageNumber, el);
+              }}
+              onMouseDown={(e) => handleMouseDown(e, pageNumber)}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              style={{ cursor: isTextMode ? 'text' : (onAddBoundingBox ? 'crosshair' : 'default') }}
+            >
+              <Page
+                pageNumber={pageNumber}
+                scale={scale}
+                onLoadSuccess={pageNumber === 1 ? onPageLoadSuccess : undefined}
+                loading={
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                  </div>
+                }
+              />
+              {pageNumber === 1 && renderBoundingBoxes()}
+              {renderTextAnnotations(pageNumber)}
+              
+              {/* Active text annotation being typed for this page */}
+              {activeTextAnnotation && activeTextAnnotation.page === pageNumber && (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: activeTextAnnotation.x * scale,
+                    top: activeTextAnnotation.y * scale,
+                    fontSize: `${14 * scale}px`,
+                    fontFamily: 'Arial, sans-serif',
+                    color: '#000000',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {activeTextAnnotation.text}
+                  <span className="animate-pulse">|</span>
+                </div>
+              )}
+              
+              {/* Drawing preview for first page only */}
+              {pageNumber === 1 && currentBox && isDrawing && (
+                <div
+                  className="absolute border-2 border-dashed border-blue-500 bg-blue-500/10 pointer-events-none"
+                  style={{
+                    left: currentBox.x * scale,
+                    top: currentBox.y * scale,
+                    width: currentBox.width * scale,
+                    height: currentBox.height * scale,
+                  }}
+                />
+              )}
+              
+              {/* Page number label */}
+              <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
+                Page {pageNumber}
+              </div>
+            </div>
+          );
+        })}
+      </Document>
       
       {numPages > 0 && (
         <div className="mt-4 text-center text-muted-foreground">
-          <div>Page {pageNumber} of {numPages} • Scale: {Math.round(scale * 100)}%</div>
+          <div>{numPages} page{numPages > 1 ? 's' : ''} • Scale: {Math.round(scale * 100)}%</div>
           {activeTextAnnotation ? (
             <div className="text-sm mt-1">Type your text • Press Enter to save • Press Escape to cancel</div>
           ) : isTextMode ? (
