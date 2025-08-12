@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Trash2, Type } from 'lucide-react';
+import { Trash2, Type, Move } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface TextAnnotation {
@@ -14,16 +14,16 @@ interface TextAnnotation {
 
 interface TextAnnotationFormProps {
   textAnnotations: TextAnnotation[];
-  isTextMode: boolean;
-  onToggleTextMode: (enabled: boolean) => void;
+  mode: 'draw' | 'text';
+  onModeChange: (mode: 'draw' | 'text') => void;
   onRemoveAnnotation: (id: string) => void;
   onExportPDF: () => void;
 }
 
 export const TextAnnotationForm = ({
   textAnnotations,
-  isTextMode,
-  onToggleTextMode,
+  mode,
+  onModeChange,
   onRemoveAnnotation,
   onExportPDF
 }: TextAnnotationFormProps) => {
@@ -33,19 +33,21 @@ export const TextAnnotationForm = ({
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Text Annotations</h3>
           <Button
-            variant={isTextMode ? "default" : "outline"}
+            variant={mode === 'text' ? "default" : "outline"}
             size="sm"
-            onClick={() => onToggleTextMode(!isTextMode)}
+            onClick={() => onModeChange('text')}
             className="gap-2"
           >
             <Type className="h-4 w-4" />
-            Insert Text
+            <Move className="h-4 w-4" />
+            Text Mode
           </Button>
         </div>
 
-        {isTextMode && (
+        {mode === 'text' && (
           <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
-            Click anywhere on the PDF to add text
+            • Drag existing text to move it<br/>
+            • Click empty space to add new text
           </div>
         )}
 
@@ -61,10 +63,10 @@ export const TextAnnotationForm = ({
                   key={annotation.id}
                   className="flex items-center justify-between p-2 rounded border bg-card"
                 >
-                  <div className="flex-1 truncate">
+                  <div className="flex-1">
                     <p className="text-sm font-medium truncate">{annotation.text}</p>
                     <p className="text-xs text-muted-foreground">
-                      Page {annotation.page} • ({Math.round(annotation.x)}, {Math.round(annotation.y)})
+                      Page {annotation.page} • X: {Math.round(annotation.x)}, Y: {Math.round(annotation.y)}
                     </p>
                   </div>
                   <Button

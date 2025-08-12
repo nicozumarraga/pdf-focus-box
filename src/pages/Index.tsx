@@ -25,7 +25,7 @@ const Index = () => {
   const [boundingBoxes, setBoundingBoxes] = useState<BoundingBox[]>([]);
   const [activeBoundingBox, setActiveBoundingBox] = useState<string | null>(null);
   const [textAnnotations, setTextAnnotations] = useState<TextAnnotation[]>([]);
-  const [isTextMode, setIsTextMode] = useState<boolean>(false);
+  const [mode, setMode] = useState<'draw' | 'text'>('draw');
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   const handleAddBoundingBox = (bbox: BoundingBox) => {
@@ -54,6 +54,12 @@ const Index = () => {
     ));
   };
 
+  const handleUpdateTextAnnotationCoordinates = (id: string, x: number, y: number) => {
+    setTextAnnotations(prev => prev.map(ann => 
+      ann.id === id ? { ...ann, x, y } : ann
+    ));
+  };
+
   const handleExportPDF = async () => {
     if (!file) return;
     await exportPDFWithAnnotations(file, textAnnotations, boundingBoxes);
@@ -77,11 +83,13 @@ const Index = () => {
               onRemoveBoundingBox={handleRemoveBoundingBox}
               activeBoundingBox={activeBoundingBox}
               onSetActiveBoundingBox={setActiveBoundingBox}
+              mode={mode}
+              onModeChange={setMode}
             />
             <TextAnnotationForm
               textAnnotations={textAnnotations}
-              isTextMode={isTextMode}
-              onToggleTextMode={setIsTextMode}
+              mode={mode}
+              onModeChange={setMode}
               onRemoveAnnotation={handleRemoveTextAnnotation}
               onExportPDF={handleExportPDF}
             />
@@ -93,10 +101,11 @@ const Index = () => {
               file={file}
               boundingBoxes={boundingBoxes}
               activeBoundingBox={activeBoundingBox}
-              onAddBoundingBox={handleAddBoundingBox}
+              onAddBoundingBox={mode === 'draw' ? handleAddBoundingBox : undefined}
               textAnnotations={textAnnotations}
-              isTextMode={isTextMode}
+              mode={mode}
               onAddTextAnnotation={handleAddTextAnnotation}
+              onUpdateTextAnnotation={handleUpdateTextAnnotationCoordinates}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
             />

@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, Plus } from 'lucide-react';
+import { Trash2, Plus, Square } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface BoundingBox {
@@ -18,6 +18,8 @@ interface BoundingBoxFormProps {
   onRemoveBoundingBox: (id: string) => void;
   activeBoundingBox: string | null;
   onSetActiveBoundingBox: (id: string) => void;
+  mode?: 'draw' | 'text';
+  onModeChange?: (mode: 'draw' | 'text') => void;
 }
 
 export const BoundingBoxForm = ({
@@ -26,6 +28,8 @@ export const BoundingBoxForm = ({
   onRemoveBoundingBox,
   activeBoundingBox,
   onSetActiveBoundingBox,
+  mode = 'draw',
+  onModeChange,
 }: BoundingBoxFormProps) => {
   const [x1, setX1] = useState('');
   const [y1, setY1] = useState('');
@@ -83,9 +87,27 @@ export const BoundingBoxForm = ({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Add Bounding Box</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Bounding Boxes</CardTitle>
+            {onModeChange && (
+              <Button
+                variant={mode === 'draw' ? "default" : "outline"}
+                size="sm"
+                onClick={() => onModeChange('draw')}
+                className="gap-2"
+              >
+                <Square className="h-4 w-4" />
+                Draw Boxes
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
+          {mode === 'draw' && (
+            <div className="text-sm text-muted-foreground bg-muted p-2 rounded mb-4">
+              Click and drag on PDF to draw boxes
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-2">
               <div>
