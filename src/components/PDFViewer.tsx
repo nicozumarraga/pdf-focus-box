@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
+import { FormFieldOverlay } from './FormFieldOverlay';
+import { FormFieldData } from '@/lib/formFields';
 
 // Set up the worker
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
@@ -27,11 +29,14 @@ interface PDFViewerProps {
   activeBoundingBox: string | null;
   onAddBoundingBox?: (bbox: BoundingBox) => void;
   textAnnotations: TextAnnotation[];
-  mode: 'draw' | 'text';
+  mode: 'draw' | 'text' | 'form';
   onAddTextAnnotation?: (annotation: TextAnnotation) => void;
   onUpdateTextAnnotation?: (id: string, x: number, y: number) => void;
   currentPage: number;
   onPageChange?: (page: number) => void;
+  formFields?: FormFieldData[];
+  formValues?: Record<string, any>;
+  onFormValueChange?: (fieldName: string, value: any) => void;
 }
 
 export const PDFViewer = ({ 
@@ -44,7 +49,10 @@ export const PDFViewer = ({
   onAddTextAnnotation,
   onUpdateTextAnnotation,
   currentPage,
-  onPageChange
+  onPageChange,
+  formFields = [],
+  formValues = {},
+  onFormValueChange
 }: PDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.0);
@@ -388,7 +396,7 @@ export const PDFViewer = ({
                 onMouseUp={!draggingAnnotation ? handleMouseUp : undefined}
                 onMouseLeave={!draggingAnnotation ? handleMouseUp : undefined}
                 style={{ 
-                  cursor: mode === 'text' ? 'text' : (mode === 'draw' ? 'crosshair' : 'default')
+                  cursor: mode === 'text' ? 'text' : (mode === 'draw' ? 'crosshair' : (mode === 'form' ? 'default' : 'default'))
                 }}
               >
                 <Page
@@ -405,6 +413,19 @@ export const PDFViewer = ({
               
               {/* Bounding Boxes Layer */}
               {pageNumber === 1 && renderBoundingBoxes()}
+              
+              {/* Form Fields Layer */}
+              {formFields.length > 0 && onFormValueChange && (
+                <FormFieldOverlay
+                  fields={formFields}
+                  values={formValues}
+                  onValueChange={onFormValueChange}
+                  scale={scale}
+                  pageNumber={pageNumber}
+                  pageHeight={pageHeight}
+                  disabled={mode !== 'form'}
+                />
+              )}
               
               {/* Text Annotations Interactive Layer */}
               <div
@@ -465,6 +486,8 @@ export const PDFViewer = ({
             <div className="text-sm mt-1">Drag text to move • Click empty space to add new text</div>
           ) : mode === 'draw' ? (
             <div className="text-sm mt-1">Click and drag to draw a bounding box</div>
+          ) : mode === 'form' ? (
+            <div className="text-sm mt-1">Edit form fields • Switch to another mode to add annotations</div>
           ) : null}
         </div>
       )}

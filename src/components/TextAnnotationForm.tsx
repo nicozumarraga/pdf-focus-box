@@ -14,8 +14,8 @@ interface TextAnnotation {
 
 interface TextAnnotationFormProps {
   textAnnotations: TextAnnotation[];
-  mode: 'draw' | 'text';
-  onModeChange: (mode: 'draw' | 'text') => void;
+  mode: 'draw' | 'text' | 'form';
+  onModeChange: (mode: 'draw' | 'text' | 'form') => void;
   onRemoveAnnotation: (id: string) => void;
   onExportPDF: () => void;
 }
@@ -82,15 +82,13 @@ export const TextAnnotationForm = ({
           </div>
         </ScrollArea>
 
-        {textAnnotations.length > 0 && (
-          <Button
-            onClick={onExportPDF}
-            className="w-full"
-            variant="default"
-          >
-            Export PDF with Annotations
-          </Button>
-        )}
+        <Button
+          onClick={onExportPDF}
+          className="w-full"
+          variant="default"
+        >
+          Export PDF with Annotations
+        </Button>
       </div>
     </Card>
   );

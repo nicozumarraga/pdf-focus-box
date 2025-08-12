@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PDFViewer } from '@/components/PDFViewer';
 import { BoundingBoxForm } from '@/components/BoundingBoxForm';
 import { FileUpload } from '@/components/FileUpload';
 import { TextAnnotationForm } from '@/components/TextAnnotationForm';
+import { FormFieldsPanel } from '@/components/FormFieldsPanel';
 import { exportPDFWithAnnotations } from '@/lib/pdfExport';
+import { detectFormFields, FormFieldsInfo } from '@/lib/formFields';
 
 interface BoundingBox {
   id: string;
@@ -25,8 +27,27 @@ const Index = () => {
   const [boundingBoxes, setBoundingBoxes] = useState<BoundingBox[]>([]);
   const [activeBoundingBox, setActiveBoundingBox] = useState<string | null>(null);
   const [textAnnotations, setTextAnnotations] = useState<TextAnnotation[]>([]);
-  const [mode, setMode] = useState<'draw' | 'text'>('draw');
+  const [mode, setMode] = useState<'draw' | 'text' | 'form'>('draw');
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [formFieldsInfo, setFormFieldsInfo] = useState<FormFieldsInfo | null>(null);
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
+
+  // Detect form fields when a new PDF is loaded
+  useEffect(() => {
+    if (file) {
+      file.arrayBuffer().then(async (buffer) => {
+        const fieldsInfo = await detectFormFields(buffer);
+        setFormFieldsInfo(fieldsInfo);
+        if (fieldsInfo.hasFormFields) {
+          setFormValues(fieldsInfo.formValues);
+          console.log('Detected form fields:', fieldsInfo.fields);
+        }
+      });
+    } else {
+      setFormFieldsInfo(null);
+      setFormValues({});
+    }
+  }, [file]);
 
   const handleAddBoundingBox = (bbox: BoundingBox) => {
     setBoundingBoxes(prev => [...prev, bbox]);
@@ -62,7 +83,7 @@ const Index = () => {
 
   const handleExportPDF = async () => {
     if (!file) return;
-    await exportPDFWithAnnotations(file, textAnnotations, boundingBoxes);
+    await exportPDFWithAnnotations(file, textAnnotations, boundingBoxes, formValues);
   };
 
   return (
@@ -77,6 +98,14 @@ const Index = () => {
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-4 bg-sidebar-bg p-4 rounded-lg overflow-y-auto">
             <FileUpload file={file} onFileSelect={setFile} />
+            {formFieldsInfo && formFieldsInfo.hasFormFields && (
+              <FormFieldsPanel
+                formFieldsInfo={formFieldsInfo}
+                mode={mode}
+                onModeChange={setMode}
+                formValues={formValues}
+              />
+            )}
             <BoundingBoxForm
               boundingBoxes={boundingBoxes}
               onAddBoundingBox={handleAddBoundingBox}
@@ -108,6 +137,9 @@ const Index = () => {
               onUpdateTextAnnotation={handleUpdateTextAnnotationCoordinates}
               currentPage={currentPage}
               onPageChange={setCurrentPage}
+              formFields={formFieldsInfo?.fields}
+              formValues={formValues}
+              onFormValueChange={(name: string, value: any) => setFormValues(prev => ({ ...prev, [name]: value }))}
             />
           </div>
         </div>
