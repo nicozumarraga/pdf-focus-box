@@ -12,6 +12,7 @@ interface BoundingBox {
   id: string;
   coords: [number, number, number, number]; // [x1, y1, x2, y2]
   label?: string;
+  page: number;
 }
 
 interface TextAnnotation {
@@ -65,6 +66,7 @@ export const PDFViewer = ({
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [currentBox, setCurrentBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [drawingPage, setDrawingPage] = useState<number>(1);
   
   // Text annotation state
   const [activeTextAnnotation, setActiveTextAnnotation] = useState<{ x: number; y: number; text: string; page: number } | null>(null);
@@ -145,6 +147,7 @@ export const PDFViewer = ({
       setIsDrawing(true);
       setStartPoint({ x, y });
       setCurrentBox({ x, y, width: 0, height: 0 });
+      setDrawingPage(pageNumber);
     }
   };
 
@@ -186,7 +189,8 @@ export const PDFViewer = ({
           Math.round((currentBox.x + currentBox.width) * 10) / 10,
           Math.round((currentBox.y + currentBox.height) * 10) / 10
         ],
-        label: `Box ${boundingBoxes.length + 1}`
+        label: `Box ${boundingBoxes.length + 1}`,
+        page: drawingPage
       };
       onAddBoundingBox(newBox);
     }
@@ -278,10 +282,12 @@ export const PDFViewer = ({
     };
   }, [draggingAnnotation, dragOffset, scale, textAnnotations, onUpdateTextAnnotation]);
 
-  const renderBoundingBoxes = () => {
+  const renderBoundingBoxes = (pageNumber: number) => {
     if (!pageWidth || !pageHeight) return null;
 
-    return boundingBoxes.map((bbox) => {
+    return boundingBoxes
+      .filter(bbox => bbox.page === pageNumber)
+      .map((bbox) => {
       const [x1, y1, x2, y2] = bbox.coords;
       const isActive = bbox.id === activeBoundingBox;
       
@@ -420,7 +426,7 @@ export const PDFViewer = ({
               </div>
               
               {/* Bounding Boxes Layer */}
-              {pageNumber === 1 && renderBoundingBoxes()}
+              {renderBoundingBoxes(pageNumber)}
               
               {/* Form Fields Layer */}
               {formFields.length > 0 && onFormValueChange && (
@@ -463,8 +469,8 @@ export const PDFViewer = ({
                 </div>
               )}
               
-              {/* Drawing preview for first page only */}
-              {pageNumber === 1 && currentBox && isDrawing && (
+              {/* Drawing preview */}
+              {pageNumber === drawingPage && currentBox && isDrawing && (
                 <div
                   className="absolute border-2 border-dashed border-blue-500 bg-blue-500/10 pointer-events-none"
                   style={{

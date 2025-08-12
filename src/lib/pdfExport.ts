@@ -13,6 +13,7 @@ interface BoundingBox {
   id: string;
   coords: [number, number, number, number];
   label?: string;
+  page: number;
 }
 
 export async function exportPDFWithAnnotations(
@@ -88,33 +89,37 @@ export async function exportPDFWithAnnotations(
     // Add bounding boxes (as rectangles)
     boundingBoxes.forEach((bbox) => {
       const [x1, y1, x2, y2] = bbox.coords;
-      const page = pages[0]; // Assuming bounding boxes are on first page for now
-      const { height } = page.getSize();
+      const pageIndex = bbox.page - 1; // Convert to 0-based index
       
-      // Convert coordinates
-      const pdfY1 = height - y1;
-      const pdfY2 = height - y2;
-      
-      // Draw rectangle outline
-      page.drawRectangle({
-        x: x1,
-        y: Math.min(pdfY1, pdfY2),
-        width: x2 - x1,
-        height: Math.abs(pdfY2 - pdfY1),
-        borderColor: rgb(0, 0, 1),
-        borderWidth: 1,
-        opacity: 0.5,
-      });
-      
-      // Add label if exists
-      if (bbox.label) {
-        page.drawText(bbox.label, {
+      if (pageIndex >= 0 && pageIndex < pages.length) {
+        const page = pages[pageIndex];
+        const { height } = page.getSize();
+        
+        // Convert coordinates
+        const pdfY1 = height - y1;
+        const pdfY2 = height - y2;
+        
+        // Draw rectangle outline
+        page.drawRectangle({
           x: x1,
-          y: Math.max(pdfY1, pdfY2) + 5,
-          size: 10,
-          font: helveticaFont,
-          color: rgb(0, 0, 1),
+          y: Math.min(pdfY1, pdfY2),
+          width: x2 - x1,
+          height: Math.abs(pdfY2 - pdfY1),
+          borderColor: rgb(0, 0, 1),
+          borderWidth: 1,
+          opacity: 0.5,
         });
+        
+        // Add label if exists
+        if (bbox.label) {
+          page.drawText(bbox.label, {
+            x: x1,
+            y: Math.max(pdfY1, pdfY2) + 5,
+            size: 10,
+            font: helveticaFont,
+            color: rgb(0, 0, 1),
+          });
+        }
       }
     });
     

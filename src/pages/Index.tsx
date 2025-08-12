@@ -9,6 +9,7 @@ interface BoundingBox {
   id: string;
   coords: [number, number, number, number];
   label?: string;
+  page: number;
 }
 
 interface TextAnnotation {

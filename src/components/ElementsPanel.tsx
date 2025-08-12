@@ -10,6 +10,7 @@ interface BoundingBox {
   id: string;
   coords: [number, number, number, number];
   label?: string;
+  page: number;
 }
 
 interface TextAnnotation {
@@ -99,7 +100,7 @@ export const ElementsPanel = ({
                               {bbox.label || `Box ${bbox.id.slice(-6)}`}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Bounding Box
+                              Page {bbox.page} • Bounding Box
                             </div>
                           </div>
                         </div>
@@ -212,7 +213,7 @@ export const ElementsPanel = ({
                               {bbox.label || `Box ${bbox.id.slice(-6)}`}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              [{bbox.coords.map(c => Math.round(c)).join(', ')}]
+                              Page {bbox.page} • [{bbox.coords.map(c => Math.round(c)).join(', ')}]
                             </div>
                           </div>
                           <Button
