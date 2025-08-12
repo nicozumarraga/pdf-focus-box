@@ -56,7 +56,7 @@ export const FormFieldOverlay = ({
     switch (field.type) {
       case 'text':
         return (
-          <div key={field.name} style={style}>
+          <div key={field.name} style={style} data-form-field={field.name}>
             <Input
               value={value || ''}
               onChange={(e) => handleChange(field.name, e.target.value)}
@@ -71,7 +71,7 @@ export const FormFieldOverlay = ({
 
       case 'checkbox':
         return (
-          <div key={field.name} style={style} className="flex items-center justify-center">
+          <div key={field.name} style={style} className="flex items-center justify-center" data-form-field={field.name}>
             <Checkbox
               checked={value || false}
               onCheckedChange={(checked) => handleChange(field.name, checked)}
@@ -83,7 +83,7 @@ export const FormFieldOverlay = ({
 
       case 'dropdown':
         return (
-          <div key={field.name} style={style}>
+          <div key={field.name} style={style} data-form-field={field.name}>
             <Select
               value={Array.isArray(value) ? value[0] : value}
               onValueChange={(newValue) => handleChange(field.name, newValue)}
@@ -105,7 +105,7 @@ export const FormFieldOverlay = ({
 
       case 'radio':
         return (
-          <div key={field.name} style={style}>
+          <div key={field.name} style={style} data-form-field={field.name}>
             <RadioGroup
               value={value || ''}
               onValueChange={(newValue) => handleChange(field.name, newValue)}
@@ -126,7 +126,7 @@ export const FormFieldOverlay = ({
 
       case 'option-list':
         return (
-          <div key={field.name} style={style}>
+          <div key={field.name} style={style} data-form-field={field.name}>
             <select
               multiple
               value={value || []}
@@ -150,7 +150,7 @@ export const FormFieldOverlay = ({
         // Buttons are typically for actions like submit/reset
         // We'll render them but they won't be functional in this context
         return (
-          <div key={field.name} style={style}>
+          <div key={field.name} style={style} data-form-field={field.name}>
             <button
               disabled={true}
               className="h-full w-full border border-gray-400 bg-gray-100 text-xs rounded opacity-50"

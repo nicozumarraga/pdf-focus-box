@@ -18,8 +18,8 @@ interface BoundingBoxFormProps {
   onRemoveBoundingBox: (id: string) => void;
   activeBoundingBox: string | null;
   onSetActiveBoundingBox: (id: string) => void;
-  mode?: 'draw' | 'text' | 'form';
-  onModeChange?: (mode: 'draw' | 'text' | 'form') => void;
+  mode?: 'draw' | 'annotate';
+  onModeChange?: (mode: 'draw' | 'annotate') => void;
 }
 
 export const BoundingBoxForm = ({

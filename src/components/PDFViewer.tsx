@@ -29,7 +29,7 @@ interface PDFViewerProps {
   activeBoundingBox: string | null;
   onAddBoundingBox?: (bbox: BoundingBox) => void;
   textAnnotations: TextAnnotation[];
-  mode: 'draw' | 'text' | 'form';
+  mode: 'box' | 'text';
   onAddTextAnnotation?: (annotation: TextAnnotation) => void;
   onUpdateTextAnnotation?: (id: string, x: number, y: number) => void;
   currentPage: number;
@@ -114,13 +114,7 @@ export const PDFViewer = ({
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>, pageNumber: number) => {
-    // Check if clicking on a text annotation in text mode
     const target = e.target as HTMLElement;
-    if (mode === 'text' && target.closest('[data-annotation-id]')) {
-      // Let the annotation's own mouseDown handler take care of it
-      return;
-    }
-    
     const pageElement = e.currentTarget;
     if (!pageElement) return;
     
@@ -128,11 +122,25 @@ export const PDFViewer = ({
     const x = (e.clientX - rect.left) / scale;
     const y = (e.clientY - rect.top) / scale;
     
-    if (mode === 'text' && onAddTextAnnotation) {
-      // In text mode, create active text annotation at click position
-      // Only if not clicking on existing annotation
-      setActiveTextAnnotation({ x, y, text: '', page: pageNumber });
-    } else if (mode === 'draw' && onAddBoundingBox) {
+    if (mode === 'text') {
+      // Priority 1: Check if clicking on a form field
+      const formFieldElement = target.closest('[data-form-field]');
+      if (formFieldElement) {
+        // Form field will handle its own interaction
+        return;
+      }
+      
+      // Priority 2: Check if clicking on an existing text annotation
+      if (target.closest('[data-annotation-id]')) {
+        // Let the annotation's own mouseDown handler take care of it
+        return;
+      }
+      
+      // Priority 3: Create new text annotation at click position
+      if (onAddTextAnnotation) {
+        setActiveTextAnnotation({ x, y, text: '', page: pageNumber });
+      }
+    } else if (mode === 'box' && onAddBoundingBox) {
       // In draw mode, start drawing bounding box
       setIsDrawing(true);
       setStartPoint({ x, y });
@@ -396,7 +404,7 @@ export const PDFViewer = ({
                 onMouseUp={!draggingAnnotation ? handleMouseUp : undefined}
                 onMouseLeave={!draggingAnnotation ? handleMouseUp : undefined}
                 style={{ 
-                  cursor: mode === 'text' ? 'text' : (mode === 'draw' ? 'crosshair' : (mode === 'form' ? 'default' : 'default'))
+                  cursor: mode === 'text' ? 'text' : (mode === 'box' ? 'crosshair' : 'default')
                 }}
               >
                 <Page
@@ -423,7 +431,7 @@ export const PDFViewer = ({
                   scale={scale}
                   pageNumber={pageNumber}
                   pageHeight={pageHeight}
-                  disabled={mode !== 'form'}
+                  disabled={mode !== 'text'}
                 />
               )}
               
@@ -483,11 +491,9 @@ export const PDFViewer = ({
           {activeTextAnnotation ? (
             <div className="text-sm mt-1">Type your text • Press Enter to save • Press Escape to cancel</div>
           ) : mode === 'text' ? (
-            <div className="text-sm mt-1">Drag text to move • Click empty space to add new text</div>
-          ) : mode === 'draw' ? (
+            <div className="text-sm mt-1">Click form fields to edit • Drag text to move • Click empty space to add new text</div>
+          ) : mode === 'box' ? (
             <div className="text-sm mt-1">Click and drag to draw a bounding box</div>
-          ) : mode === 'form' ? (
-            <div className="text-sm mt-1">Edit form fields • Switch to another mode to add annotations</div>
           ) : null}
         </div>
       )}

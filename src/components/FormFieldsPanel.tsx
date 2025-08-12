@@ -6,8 +6,8 @@ import { FormFieldsInfo } from '@/lib/formFields';
 
 interface FormFieldsPanelProps {
   formFieldsInfo: FormFieldsInfo | null;
-  mode: 'draw' | 'text' | 'form';
-  onModeChange: (mode: 'draw' | 'text' | 'form') => void;
+  mode: 'draw' | 'annotate';
+  onModeChange: (mode: 'draw' | 'annotate') => void;
   formValues: Record<string, any>;
 }
 
@@ -45,17 +45,17 @@ export const FormFieldsPanel = ({
         <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
           <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <div className="text-sm text-blue-700 dark:text-blue-300">
-            This PDF contains fillable form fields. Switch to Form mode to edit them.
+            This PDF contains fillable form fields. Switch to Annotate mode to edit them along with text annotations.
           </div>
         </div>
 
         <Button
-          variant={mode === 'form' ? 'default' : 'outline'}
+          variant={mode === 'annotate' ? 'default' : 'outline'}
           className="w-full"
-          onClick={() => onModeChange('form')}
+          onClick={() => onModeChange('annotate')}
         >
           <FormInput className="h-4 w-4 mr-2" />
-          {mode === 'form' ? 'Form Mode Active' : 'Edit Form Fields'}
+          {mode === 'annotate' ? 'Annotate Mode Active' : 'Switch to Annotate Mode'}
         </Button>
 
         <div className="space-y-2">
@@ -88,7 +88,7 @@ export const FormFieldsPanel = ({
           </div>
         </div>
 
-        {mode === 'form' && (
+        {mode === 'annotate' && (
           <div className="text-xs text-muted-foreground">
             Click on the form fields in the PDF to edit their values. Your changes will be preserved when exporting.
           </div>

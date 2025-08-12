@@ -14,8 +14,8 @@ interface TextAnnotation {
 
 interface TextAnnotationFormProps {
   textAnnotations: TextAnnotation[];
-  mode: 'draw' | 'text' | 'form';
-  onModeChange: (mode: 'draw' | 'text' | 'form') => void;
+  mode: 'draw' | 'annotate';
+  onModeChange: (mode: 'draw' | 'annotate') => void;
   onRemoveAnnotation: (id: string) => void;
   onExportPDF: () => void;
 }
@@ -33,18 +33,18 @@ export const TextAnnotationForm = ({
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Text Annotations</h3>
           <Button
-            variant={mode === 'text' ? "default" : "outline"}
+            variant={mode === 'annotate' ? "default" : "outline"}
             size="sm"
-            onClick={() => onModeChange('text')}
+            onClick={() => onModeChange('annotate')}
             className="gap-2"
           >
             <Type className="h-4 w-4" />
             <Move className="h-4 w-4" />
-            Text Mode
+            Annotate
           </Button>
         </div>
 
-        {mode === 'text' && (
+        {mode === 'annotate' && (
           <div className="text-sm text-muted-foreground bg-muted p-2 rounded">
             • Drag existing text to move it<br/>
             • Click empty space to add new text

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { PDFViewer } from '@/components/PDFViewer';
-import { BoundingBoxForm } from '@/components/BoundingBoxForm';
 import { FileUpload } from '@/components/FileUpload';
-import { TextAnnotationForm } from '@/components/TextAnnotationForm';
-import { FormFieldsPanel } from '@/components/FormFieldsPanel';
+import { ElementsPanel } from '@/components/ElementsPanel';
 import { exportPDFWithAnnotations } from '@/lib/pdfExport';
 import { detectFormFields, FormFieldsInfo } from '@/lib/formFields';
 
@@ -27,7 +25,7 @@ const Index = () => {
   const [boundingBoxes, setBoundingBoxes] = useState<BoundingBox[]>([]);
   const [activeBoundingBox, setActiveBoundingBox] = useState<string | null>(null);
   const [textAnnotations, setTextAnnotations] = useState<TextAnnotation[]>([]);
-  const [mode, setMode] = useState<'draw' | 'text' | 'form'>('draw');
+  const [mode, setMode] = useState<'box' | 'text'>('box');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [formFieldsInfo, setFormFieldsInfo] = useState<FormFieldsInfo | null>(null);
   const [formValues, setFormValues] = useState<Record<string, any>>({});
@@ -98,28 +96,43 @@ const Index = () => {
           {/* Sidebar */}
           <div className="lg:col-span-1 space-y-4 bg-sidebar-bg p-4 rounded-lg overflow-y-auto">
             <FileUpload file={file} onFileSelect={setFile} />
-            {formFieldsInfo && formFieldsInfo.hasFormFields && (
-              <FormFieldsPanel
-                formFieldsInfo={formFieldsInfo}
-                mode={mode}
-                onModeChange={setMode}
-                formValues={formValues}
-              />
-            )}
-            <BoundingBoxForm
+            
+            {/* Mode Toggle */}
+            <div className="bg-card rounded-lg p-4">
+              <div className="flex rounded-lg bg-muted p-1">
+                <button
+                  onClick={() => setMode('box')}
+                  className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    mode === 'box' 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Box Mode
+                </button>
+                <button
+                  onClick={() => setMode('text')}
+                  className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    mode === 'text' 
+                      ? 'bg-background text-foreground shadow-sm' 
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Text Mode
+                </button>
+              </div>
+            </div>
+            
+            {/* Elements Panel */}
+            <ElementsPanel
               boundingBoxes={boundingBoxes}
-              onAddBoundingBox={handleAddBoundingBox}
-              onRemoveBoundingBox={handleRemoveBoundingBox}
+              textAnnotations={textAnnotations}
+              formFields={formFieldsInfo?.fields || []}
+              formValues={formValues}
               activeBoundingBox={activeBoundingBox}
               onSetActiveBoundingBox={setActiveBoundingBox}
-              mode={mode}
-              onModeChange={setMode}
-            />
-            <TextAnnotationForm
-              textAnnotations={textAnnotations}
-              mode={mode}
-              onModeChange={setMode}
-              onRemoveAnnotation={handleRemoveTextAnnotation}
+              onRemoveBoundingBox={handleRemoveBoundingBox}
+              onRemoveTextAnnotation={handleRemoveTextAnnotation}
               onExportPDF={handleExportPDF}
             />
           </div>
@@ -130,7 +143,7 @@ const Index = () => {
               file={file}
               boundingBoxes={boundingBoxes}
               activeBoundingBox={activeBoundingBox}
-              onAddBoundingBox={mode === 'draw' ? handleAddBoundingBox : undefined}
+              onAddBoundingBox={mode === 'box' ? handleAddBoundingBox : undefined}
               textAnnotations={textAnnotations}
               mode={mode}
               onAddTextAnnotation={handleAddTextAnnotation}
