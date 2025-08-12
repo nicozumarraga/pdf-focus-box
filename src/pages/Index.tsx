@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { PDFViewer } from '@/components/PDFViewer';
 import { BoundingBoxForm } from '@/components/BoundingBoxForm';
 import { FileUpload } from '@/components/FileUpload';
+import { TextAnnotationForm } from '@/components/TextAnnotationForm';
+import { exportPDFWithAnnotations } from '@/lib/pdfExport';
 
 interface BoundingBox {
   id: string;
@@ -9,10 +11,22 @@ interface BoundingBox {
   label?: string;
 }
 
+interface TextAnnotation {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  page: number;
+}
+
 const Index = () => {
   const [file, setFile] = useState<File | null>(null);
   const [boundingBoxes, setBoundingBoxes] = useState<BoundingBox[]>([]);
   const [activeBoundingBox, setActiveBoundingBox] = useState<string | null>(null);
+  const [textAnnotations, setTextAnnotations] = useState<TextAnnotation[]>([]);
+  const [isTextMode, setIsTextMode] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
   const handleAddBoundingBox = (bbox: BoundingBox) => {
     setBoundingBoxes(prev => [...prev, bbox]);
@@ -24,6 +38,25 @@ const Index = () => {
     if (activeBoundingBox === id) {
       setActiveBoundingBox(null);
     }
+  };
+
+  const handleAddTextAnnotation = (annotation: TextAnnotation) => {
+    setTextAnnotations(prev => [...prev, annotation]);
+  };
+
+  const handleRemoveTextAnnotation = (id: string) => {
+    setTextAnnotations(prev => prev.filter(ann => ann.id !== id));
+  };
+
+  const handleUpdateTextAnnotation = (id: string, text: string) => {
+    setTextAnnotations(prev => prev.map(ann => 
+      ann.id === id ? { ...ann, text } : ann
+    ));
+  };
+
+  const handleExportPDF = async () => {
+    if (!file) return;
+    await exportPDFWithAnnotations(file, textAnnotations, boundingBoxes);
   };
 
   return (
@@ -45,6 +78,13 @@ const Index = () => {
               activeBoundingBox={activeBoundingBox}
               onSetActiveBoundingBox={setActiveBoundingBox}
             />
+            <TextAnnotationForm
+              textAnnotations={textAnnotations}
+              isTextMode={isTextMode}
+              onToggleTextMode={setIsTextMode}
+              onRemoveAnnotation={handleRemoveTextAnnotation}
+              onExportPDF={handleExportPDF}
+            />
           </div>
           
           {/* Main viewer */}
@@ -54,6 +94,11 @@ const Index = () => {
               boundingBoxes={boundingBoxes}
               activeBoundingBox={activeBoundingBox}
               onAddBoundingBox={handleAddBoundingBox}
+              textAnnotations={textAnnotations}
+              isTextMode={isTextMode}
+              onAddTextAnnotation={handleAddTextAnnotation}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
             />
           </div>
         </div>

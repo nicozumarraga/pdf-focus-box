@@ -12,16 +12,40 @@ interface BoundingBox {
   label?: string;
 }
 
+interface TextAnnotation {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  page: number;
+}
+
 interface PDFViewerProps {
   file: File | null;
   boundingBoxes: BoundingBox[];
   activeBoundingBox: string | null;
   onAddBoundingBox?: (bbox: BoundingBox) => void;
+  textAnnotations: TextAnnotation[];
+  isTextMode: boolean;
+  onAddTextAnnotation?: (annotation: TextAnnotation) => void;
+  currentPage: number;
+  onPageChange?: (page: number) => void;
 }
 
-export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundingBox }: PDFViewerProps) => {
+export const PDFViewer = ({ 
+  file, 
+  boundingBoxes, 
+  activeBoundingBox, 
+  onAddBoundingBox,
+  textAnnotations,
+  isTextMode,
+  onAddTextAnnotation,
+  currentPage,
+  onPageChange
+}: PDFViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
-  const [pageNumber] = useState<number>(1);
+  const [pageNumber, setPageNumber] = useState<number>(currentPage || 1);
   const [scale, setScale] = useState<number>(1.0);
   const [pageWidth, setPageWidth] = useState<number>(0);
   const [pageHeight, setPageHeight] = useState<number>(0);
@@ -32,6 +56,9 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundin
   const [isDrawing, setIsDrawing] = useState(false);
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
   const [currentBox, setCurrentBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  
+  // Text annotation state
+  const [activeTextAnnotation, setActiveTextAnnotation] = useState<{ x: number; y: number; text: string } | null>(null);
 
   function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
     setNumPages(numPages);
@@ -54,15 +81,22 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundin
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!pageRef.current || !onAddBoundingBox) return;
+    if (!pageRef.current) return;
     
     const rect = pageRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / scale;
     const y = (e.clientY - rect.top) / scale;
     
-    setIsDrawing(true);
-    setStartPoint({ x, y });
-    setCurrentBox({ x, y, width: 0, height: 0 });
+    if (isTextMode && onAddTextAnnotation) {
+      // In text mode, create active text annotation at click position
+      setActiveTextAnnotation({ x, y, text: '' });
+      // Focus will be set via useEffect
+    } else if (onAddBoundingBox) {
+      // In bounding box mode, start drawing
+      setIsDrawing(true);
+      setStartPoint({ x, y });
+      setCurrentBox({ x, y, width: 0, height: 0 });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -103,6 +137,49 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundin
     setCurrentBox(null);
   };
 
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (!activeTextAnnotation || !onAddTextAnnotation) return;
+    
+    if (e.key === 'Enter') {
+      // Submit the annotation
+      if (activeTextAnnotation.text.trim()) {
+        const newAnnotation: TextAnnotation = {
+          id: `text-${Date.now()}`,
+          x: activeTextAnnotation.x,
+          y: activeTextAnnotation.y,
+          text: activeTextAnnotation.text,
+          fontSize: 14,
+          page: pageNumber
+        };
+        onAddTextAnnotation(newAnnotation);
+      }
+      setActiveTextAnnotation(null);
+    } else if (e.key === 'Escape') {
+      // Cancel
+      setActiveTextAnnotation(null);
+    } else if (e.key === 'Backspace') {
+      // Remove last character
+      setActiveTextAnnotation({
+        ...activeTextAnnotation,
+        text: activeTextAnnotation.text.slice(0, -1)
+      });
+    } else if (e.key.length === 1) {
+      // Add character
+      setActiveTextAnnotation({
+        ...activeTextAnnotation,
+        text: activeTextAnnotation.text + e.key
+      });
+    }
+  };
+
+  // Add keyboard event listener when in text mode
+  useEffect(() => {
+    if (activeTextAnnotation) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [activeTextAnnotation]);
+
   const renderBoundingBoxes = () => {
     if (!pageWidth || !pageHeight) return null;
 
@@ -137,6 +214,29 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundin
     });
   };
 
+  const renderTextAnnotations = () => {
+    if (!pageWidth || !pageHeight) return null;
+    
+    return textAnnotations
+      .filter(ann => ann.page === pageNumber)
+      .map((annotation) => (
+        <div
+          key={annotation.id}
+          className="absolute pointer-events-none"
+          style={{
+            left: annotation.x * scale,
+            top: annotation.y * scale,
+            fontSize: `${annotation.fontSize * scale}px`,
+            fontFamily: 'Arial, sans-serif',
+            color: '#000000',
+            whiteSpace: 'nowrap'
+          }}
+        >
+          {annotation.text}
+        </div>
+      ));
+  };
+
   if (!file) {
     return (
       <div className="flex-1 flex items-center justify-center bg-viewer-bg rounded-lg border-2 border-dashed border-border">
@@ -157,7 +257,7 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundin
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{ cursor: onAddBoundingBox ? 'crosshair' : 'default' }}
+        style={{ cursor: isTextMode ? 'text' : (onAddBoundingBox ? 'crosshair' : 'default') }}
       >
         <Document
           file={file}
@@ -185,6 +285,26 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundin
           />
         </Document>
         {renderBoundingBoxes()}
+        {renderTextAnnotations()}
+        
+        {/* Active text annotation being typed */}
+        {activeTextAnnotation && (
+          <div
+            className="absolute pointer-events-none"
+            style={{
+              left: activeTextAnnotation.x * scale,
+              top: activeTextAnnotation.y * scale,
+              fontSize: `${14 * scale}px`,
+              fontFamily: 'Arial, sans-serif',
+              color: '#000000',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {activeTextAnnotation.text}
+            <span className="animate-pulse">|</span>
+          </div>
+        )}
+        
         {/* Drawing preview */}
         {currentBox && isDrawing && (
           <div
@@ -202,9 +322,13 @@ export const PDFViewer = ({ file, boundingBoxes, activeBoundingBox, onAddBoundin
       {numPages > 0 && (
         <div className="mt-4 text-center text-muted-foreground">
           <div>Page {pageNumber} of {numPages} • Scale: {Math.round(scale * 100)}%</div>
-          {onAddBoundingBox && (
+          {activeTextAnnotation ? (
+            <div className="text-sm mt-1">Type your text • Press Enter to save • Press Escape to cancel</div>
+          ) : isTextMode ? (
+            <div className="text-sm mt-1">Click anywhere and start typing</div>
+          ) : onAddBoundingBox ? (
             <div className="text-sm mt-1">Click and drag to draw a bounding box</div>
-          )}
+          ) : null}
         </div>
       )}
     </div>
